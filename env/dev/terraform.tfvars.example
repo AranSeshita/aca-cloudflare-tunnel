@@ -1,0 +1,20 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+
+# --- Azure ---
+subscription_id = "00000000-0000-0000-0000-000000000000"
+project_name    = "acatunnel"
+location        = "japaneast"
+
+# Public hostname exposed via Cloudflare (must live in the zone below).
+public_hostname = "app.example.com"
+
+# Optional: extra env vars merged into the backend app.
+# app_storage_env = {
+#   AZURE_STORAGE_ACCOUNT = "stexample"
+# }
+
+# --- Cloudflare ---
+# API token needs: Account > Cloudflare Tunnel:Edit, Zone > DNS:Edit, Zone:Read
+cloudflare_api_token  = "cf-api-token"
+cloudflare_account_id = "cloudflare-account-id"
+cloudflare_zone_id    = "cloudflare-zone-id"

@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net" agent="drawio" version="24.7.5">
+  <diagram name="architecture" id="aca-cf-tunnel">
+    <mxGraphModel dx="900" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="780" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="user" value="ユーザー" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="40" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeBox" value="Cloudflare Edge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;verticalAlign=top;fontSize=13;fontStyle=1;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="150" width="460" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="row1" value="DDoS 緩和（全プラン標準・常時有効）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="150" y="190" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="row2" value="カスタムルール（Geo 制限など）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="150" y="226" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="row3" value="Rate Limit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="150" y="262" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="row4" value="Bot 対策" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="150" y="298" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="row5" value="WAF Managed Rules（OWASP など）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="150" y="334" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="arrUserEdge" value="HTTPS（DNS 解決は Cloudflare DNS）" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="user" target="edgeBox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="acaBox" value="ACA Environment（Internal / VNet 統合）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;verticalAlign=top;fontSize=13;fontStyle=1;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="60" y="480" width="580" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="acaSub" value="Public IP・Public FQDN なし、Inbound 開放ゼロ" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#3A5A80;" vertex="1" parent="1">
+          <mxGeometry x="60" y="508" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="cfd" value="cloudflared&#10;（Tunnel コネクタ）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="85" y="545" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="front" value="frontend&#10;（Container App）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="270" y="545" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="back" value="backend&#10;（Container App）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="455" y="545" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="arrCfdFront" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;" edge="1" parent="1" source="cfd" target="front">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrFrontBack" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;" edge="1" parent="1" source="front" target="back">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="internalNote" value="frontend → backend は Environment 内部通信（公開するのは frontend のみ）" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#3A5A80;" vertex="1" parent="1">
+          <mxGeometry x="60" y="622" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="arrReq" style="rounded=0;html=1;strokeColor=#666666;exitX=0.45;exitY=1;entryX=0.45;entryY=0;" edge="1" parent="1" source="edgeBox" target="acaBox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrOut" style="rounded=0;html=1;strokeColor=#009900;dashed=1;exitX=0.55;exitY=0;entryX=0.55;entryY=1;" edge="1" parent="1" source="acaBox" target="edgeBox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tunnelLabel" value="Cloudflare Tunnel&#10;（接続は cloudflared から Outbound で確立）" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="422" width="270" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="legReq" style="rounded=0;html=1;strokeColor=#666666;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="700" as="sourcePoint" />
+            <mxPoint x="190" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legReqText" value="リクエストの流れ" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="198" y="688" width="130" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="legOut" style="rounded=0;html=1;strokeColor=#009900;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="700" as="sourcePoint" />
+            <mxPoint x="400" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legOutText" value="接続の確立方向（Outbound）" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="408" y="688" width="200" height="24" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
