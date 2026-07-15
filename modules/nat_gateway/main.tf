@@ -1,4 +1,4 @@
-# NAT Gateway 用のパブリック IP（固定 egress IP）
+# Public IP for the NAT Gateway (fixed egress IP)
 resource "azurerm_public_ip" "nat" {
   name                = "pip-nat-${var.project_name}-${var.environment}"
   location            = var.location
@@ -9,7 +9,7 @@ resource "azurerm_public_ip" "nat" {
   tags                = var.tags
 }
 
-# NAT Gateway。ACA のアウトバウンドに安定した単一パブリック IP を与える。
+# NAT Gateway. Gives ACA outbound traffic a stable, single public IP.
 resource "azurerm_nat_gateway" "main" {
   name                    = "nat-${var.project_name}-${var.environment}"
   location                = var.location
@@ -24,9 +24,9 @@ resource "azurerm_nat_gateway_public_ip_association" "main" {
   public_ip_address_id = azurerm_public_ip.nat.id
 }
 
-# NAT Gateway を 1 つ以上のサブネット（例: ACA サブネット）に関連付ける。
-# 呼び出し側が定義する静的ラベルをキーにするため、subnet ID が apply 時に定まる
-# 値であっても for_each は plan 時に確定する。
+# Associates the NAT Gateway with one or more subnets (e.g. the ACA subnet).
+# Keys are static labels defined by the caller, so for_each is resolvable at
+# plan time even when the subnet IDs are apply-time computed values.
 resource "azurerm_subnet_nat_gateway_association" "main" {
   for_each       = var.subnets
   subnet_id      = each.value

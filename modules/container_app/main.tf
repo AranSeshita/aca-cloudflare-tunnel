@@ -1,5 +1,5 @@
-# Container App（再利用可能）
-# 1 アプリ = 1 呼び出しでインスタンス化する（cloudflared / frontend / backend など）。
+# Container App (reusable)
+# Instantiated once per app (cloudflared / frontend / backend, etc.).
 resource "azurerm_container_app" "main" {
   name                         = var.name
   resource_group_name          = var.resource_group_name
@@ -8,12 +8,13 @@ resource "azurerm_container_app" "main" {
   workload_profile_name        = var.workload_profile_name
   tags                         = var.tags
 
-  # Consumption-only 環境では Azure が "Consumption" を自動付与する。差分を無視して
-  # Terraform が毎回 null に戻そうとしないようにする。
+  # In a Consumption-only environment, Azure auto-assigns "Consumption". Ignore the diff
+  # so Terraform does not try to reset it to null on every run.
   #
-  # image は CI（`az containerapp update --image`）が ACR の実イメージへ更新する＝アプリの
-  # デプロイ責務は CI 側。Terraform は初期の placeholder 値を持つが、CI が更新した image を
-  # 毎回 placeholder へ巻き戻さないよう無視する（インフラ=構成 / CI=イメージ の分離）。
+  # The image is updated to the real ACR image by CI (`az containerapp update --image`),
+  # i.e. app deployment is CI's responsibility. Terraform holds the initial placeholder
+  # value, but ignores the image so it never rolls a CI-deployed image back to the
+  # placeholder (infrastructure = configuration / CI = images).
   lifecycle {
     ignore_changes = [
       workload_profile_name,
@@ -26,7 +27,7 @@ resource "azurerm_container_app" "main" {
     identity_ids = var.identity_ids
   }
 
-  # Managed Identity で ACR から pull する（admin 認証情報は使わない）。
+  # Pull from ACR with a Managed Identity (no admin credentials).
   dynamic "registry" {
     for_each = var.registry_server == null ? [] : [1]
     content {
@@ -35,7 +36,7 @@ resource "azurerm_container_app" "main" {
     }
   }
 
-  # Secret（インライン値）。
+  # Secrets (inline values).
   dynamic "secret" {
     for_each = var.secrets
     content {
@@ -56,7 +57,7 @@ resource "azurerm_container_app" "main" {
       command = var.command
       args    = var.args
 
-      # 通常の環境変数
+      # Plain environment variables
       dynamic "env" {
         for_each = var.env_vars
         content {
@@ -65,7 +66,7 @@ resource "azurerm_container_app" "main" {
         }
       }
 
-      # Secret 由来の環境変数（環境変数名 => secret 名）
+      # Secret-backed environment variables (env var name => secret name)
       dynamic "env" {
         for_each = var.env_secrets
         content {
@@ -75,7 +76,7 @@ resource "azurerm_container_app" "main" {
       }
     }
 
-    # カスタムスケールルール（例: KEDA azure-servicebus によるキュー長スケール）
+    # Custom scale rules (e.g. queue-length scaling via KEDA azure-servicebus)
     dynamic "custom_scale_rule" {
       for_each = var.custom_scale_rules
       content {
@@ -94,7 +95,7 @@ resource "azurerm_container_app" "main" {
     }
   }
 
-  # Ingress。headless なワーカー（cloudflared など）では丸ごと省略する。
+  # Ingress. Omitted entirely for headless workers (e.g. cloudflared).
   dynamic "ingress" {
     for_each = var.ingress == null ? [] : [var.ingress]
     content {

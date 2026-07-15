@@ -7,14 +7,14 @@ resource "azurerm_container_registry" "main" {
   admin_enabled       = false
   tags                = var.tags
 
-  public_network_access_enabled = true # CI/CD（GitHub Actions 等）からのアクセス用
+  public_network_access_enabled = true # for access from CI/CD (GitHub Actions, etc.)
 
   identity {
     type = "SystemAssigned"
   }
 }
 
-# Private Endpoint（Premium SKU 専用。Basic/Standard は非対応）
+# Private Endpoint (Premium SKU only; not supported on Basic/Standard)
 resource "azurerm_private_endpoint" "main" {
   count               = var.private_endpoint_enabled ? 1 : 0
   name                = "pe-acr"
@@ -36,7 +36,7 @@ resource "azurerm_private_endpoint" "main" {
   }
 }
 
-# 診断設定
+# Diagnostic setting
 resource "azurerm_monitor_diagnostic_setting" "main" {
   count                      = var.diagnostics_enabled ? 1 : 0
   name                       = "diag-acr"

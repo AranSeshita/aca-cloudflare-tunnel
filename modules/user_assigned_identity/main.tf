@@ -1,5 +1,5 @@
-# User Assigned Managed Identity（UAMI）
-# ACA アプリ用の ID。認証情報を持たずに ACR pull などへアクセスするために使う。
+# User Assigned Managed Identity (UAMI)
+# Identity for ACA apps. Used to access ACR (pull) and other resources without holding credentials.
 resource "azurerm_user_assigned_identity" "main" {
   name                = "id-${var.project_name}-${var.environment}${var.suffix}"
   location            = var.location
@@ -7,7 +7,7 @@ resource "azurerm_user_assigned_identity" "main" {
   tags                = var.tags
 }
 
-# この ID に付与するロール割り当て（対象スコープ単位・最小権限）。
+# Role assignments granted to this identity (per target scope, least privilege).
 resource "azurerm_role_assignment" "main" {
   for_each             = var.role_assignments
   scope                = each.value.scope

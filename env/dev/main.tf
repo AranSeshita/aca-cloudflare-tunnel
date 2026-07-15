@@ -1,8 +1,8 @@
 # ==========================================================================
-# ACA + Cloudflare 構成
+# ACA + Cloudflare configuration
 # ==========================================================================
 
-# --- 基盤 -----------------------------------------------------------------
+# --- Foundation -------------------------------------------------------------
 module "resource_group" {
   source = "../../modules/resource_group"
 
@@ -33,11 +33,12 @@ module "monitor" {
   tags                = local.common_tags
 }
 
-# --- レジストリ / NAT / ID -------------------------------------------------
+# --- Registry / NAT / identities ---------------------------------------------
 module "container_registry" {
   source = "../../modules/container_registry"
 
-  # ACR は PE 不要。公開エンドポイント + Managed Identity / token 認証で利用する。
+  # ACR needs no Private Endpoint: it is accessed via its public endpoint with
+  # Managed Identity / token auth.
   resource_group_name        = module.resource_group.resource_group_name
   location                   = module.resource_group.resource_group_location
   project_name               = var.project_name
@@ -87,7 +88,7 @@ module "id_backend" {
   tags = local.common_tags
 }
 
-# --- Container Apps Environment（internal・完全閉域） ---------------------
+# --- Container Apps Environment (internal, fully private) --------------------
 module "cae" {
   source = "../../modules/container_app_environment"
 
@@ -101,18 +102,18 @@ module "cae" {
 }
 
 
-# --- ACA: バックエンド -----------------------------------------------------
+# --- ACA: backend -------------------------------------------------------------
 module "aca_backend" {
   source = "../../modules/container_app"
 
   name                         = "ca-${var.project_name}-${local.environment}-api"
   resource_group_name          = module.resource_group.resource_group_name
   container_app_environment_id = module.cae.id
-  revision_mode                = "Single" # CI 単一イメージ運用。最新 active リビジョンへ自動 100%（カナリアが要る場合は Multiple へ変更可。要 CD トラフィック制御）
+  revision_mode                = "Single" # Single-image CI flow: 100% traffic goes to the latest active revision automatically (switch to Multiple for canary; requires CD-side traffic control)
 
   container_name = "api"
-  # Backend = 疎通先の応答役（既定 containerapps-helloworld）。実アプリへ差し替えるなら
-  # var.backend_image を ACR のイメージにする（registry は下で設定済み）。
+  # Backend = connectivity-check responder (default: containerapps-helloworld).
+  # To use a real app, point var.backend_image at an ACR image (registry is configured below).
   image  = var.backend_image
   cpu    = 0.5
   memory = "1Gi"
@@ -124,25 +125,25 @@ module "aca_backend" {
 
   env_vars = var.app_storage_env
 
-  # helloworld は 80 待受（PORT を読まない）。実アプリに変えたら待受ポートに合わせる。
+  # helloworld listens on port 80 (it ignores PORT). Match target_port to your app's listening port when you swap it.
   ingress      = { external_enabled = false, target_port = 80 }
   min_replicas = 1
   max_replicas = 3
   tags         = local.common_tags
 }
 
-# --- ACA: フロントエンド ---------------------------------------------------
+# --- ACA: frontend ------------------------------------------------------------
 module "aca_frontend" {
   source = "../../modules/container_app"
 
   name                         = "ca-${var.project_name}-${local.environment}-web"
   resource_group_name          = module.resource_group.resource_group_name
   container_app_environment_id = module.cae.id
-  revision_mode                = "Single" # CI 単一イメージ運用。最新 active リビジョンへ自動 100%（カナリアが要る場合は Multiple へ変更可。要 CD トラフィック制御）
+  revision_mode                = "Single" # Single-image CI flow: 100% traffic goes to the latest active revision automatically (switch to Multiple for canary; requires CD-side traffic control)
 
   container_name = "web"
-  # Frontend = Network Tester。Tunnel 経由で開き、UI から BACKEND_URL（backend の内部 FQDN）へ
-  # 疎通確認する。実アプリへ差し替えるなら var.frontend_image を ACR のイメージにする。
+  # Frontend = Network Tester. Open it through the Tunnel and use the UI to probe
+  # BACKEND_URL (the backend's internal FQDN). To use a real app, point var.frontend_image at an ACR image.
   image  = var.frontend_image
   cpu    = 0.5
   memory = "1Gi"
@@ -152,19 +153,19 @@ module "aca_frontend" {
   registry_server      = local.acr_login_server
   registry_identity_id = module.id_frontend.id
 
-  # Network Tester の UI にこの URL を入力して backend への疎通を確認する。
+  # Enter this URL in the Network Tester UI to verify connectivity to the backend.
   env_vars = {
     BACKEND_URL = "https://${module.aca_backend.fqdn}"
   }
 
-  ingress      = { external_enabled = false, target_port = 8080 } # Network Tester は 8080 待受
+  ingress      = { external_enabled = false, target_port = 8080 } # Network Tester listens on 8080
   min_replicas = 1
   max_replicas = 3
   tags         = local.common_tags
 }
 
-# --- Cloudflare Tunnel + ルーティング --------------------------------------
-# WAF は Cloudflare ダッシュボードで運用する。
+# --- Cloudflare Tunnel + routing ----------------------------------------------
+# WAF is managed in the Cloudflare dashboard.
 module "cloudflare" {
   source = "../../modules/cloudflare"
 
@@ -177,12 +178,12 @@ module "cloudflare" {
     {
       hostname   = var.public_hostname
       service    = "https://${module.aca_frontend.fqdn}"
-      create_dns = true # proxied CNAME を Terraform で作成
+      create_dns = true # Terraform creates the proxied CNAME
     }
   ]
 }
 
-# --- ACA: Cloudflared（Tunnel コネクタ） -----------------------------------
+# --- ACA: cloudflared (Tunnel connector) ---------------------------------------
 module "aca_cloudflared" {
   source = "../../modules/container_app"
 
@@ -191,17 +192,17 @@ module "aca_cloudflared" {
   container_app_environment_id = module.cae.id
 
   container_name = "cloudflared"
-  image          = var.cloudflared_image # 公開イメージ（ACR 不要）
+  image          = var.cloudflared_image # Public image (no ACR needed)
   args           = ["tunnel", "--no-autoupdate", "run", "--token", "$(TUNNEL_TOKEN)"]
 
-  # Azure リソースへアクセスしないため SystemAssigned（ロール付与なし）。
+  # SystemAssigned with no role assignments: it never accesses Azure resources.
   identity_type = "SystemAssigned"
 
   env_secrets = { TUNNEL_TOKEN = "tunnel-token" }
   secrets     = { tunnel-token = { value = module.cloudflare.tunnel_token } }
 
-  ingress      = null # アウトバウンド接続のみ
-  min_replicas = 2    # コネクタ冗長化（SPOF 回避）
+  ingress      = null # Outbound-only Tunnel connections
+  min_replicas = 2    # Redundant connectors (avoid a SPOF)
   max_replicas = 3
   tags         = local.common_tags
 }

@@ -1,8 +1,9 @@
 # container_app_environment
 
-Azure Container Apps Environment (CAE) を作成するモジュール。VNet 注入 + Internal
-Load Balancer により、**完全閉域（Internal Ingress Only）**の ACA 実行環境を提供する。
-Public IP / Public FQDN を持たず、外部からの到達経路は Cloudflare Tunnel だけになる。
+Module that creates an Azure Container Apps Environment (CAE). Through VNet injection
+plus an internal load balancer, it provides a **fully private (Internal Ingress Only)**,
+VNet-integrated ACA runtime. It has no public IP / public FQDN, so the only inbound path
+from the outside is the Cloudflare Tunnel.
 
 ## Usage
 
@@ -15,35 +16,35 @@ module "cae" {
   project_name               = var.project_name
   environment                = local.environment
   log_analytics_workspace_id = module.monitor.log_analytics_workspace_id
-  infrastructure_subnet_id   = module.network.subnet_ids["aca"] # Microsoft.App/environments へ委任
+  infrastructure_subnet_id   = module.network.subnet_ids["aca"] # delegated to Microsoft.App/environments
   tags                       = local.common_tags
 }
 ```
 
 ## Inputs
 
-| Name | Type | Default | 説明 |
+| Name | Type | Default | Description |
 |------|------|---------|------|
-| `resource_group_name` | string | - | リソースグループ名 |
-| `location` | string | - | Azure リージョン |
-| `project_name` | string | - | リソース名プレフィックス |
-| `environment` | string | - | 環境名（dev / prod） |
+| `resource_group_name` | string | - | Resource group name |
+| `location` | string | - | Azure region |
+| `project_name` | string | - | Resource name prefix |
+| `environment` | string | - | Environment name (dev / prod) |
 | `log_analytics_workspace_id` | string | - | Log Analytics Workspace ID |
-| `infrastructure_subnet_id` | string | - | ACA 注入用の委任サブネット ID |
-| `internal_load_balancer_enabled` | bool | `true` | 内部 LB（閉域）にするか |
-| `workload_profiles` | list(object) | `[]` | Workload Profile（空で Consumption-only） |
-| `tags` | map(string) | `{}` | タグ |
+| `infrastructure_subnet_id` | string | - | Delegated subnet ID for ACA injection |
+| `internal_load_balancer_enabled` | bool | `true` | Use an internal LB (fully private) |
+| `workload_profiles` | list(object) | `[]` | Workload profiles (empty for Consumption-only) |
+| `tags` | map(string) | `{}` | Tags |
 
 ## Outputs
 
-| Name | 説明 |
+| Name | Description |
 |------|------|
-| `id` | CAE の ID |
-| `name` | CAE 名 |
-| `default_domain` | 内部 FQDN 生成に使うデフォルトドメイン |
-| `static_ip_address` | 環境の静的 IP（内部 LB IP） |
+| `id` | ID of the CAE |
+| `name` | CAE name |
+| `default_domain` | Default domain used to build internal FQDNs |
+| `static_ip_address` | Static IP of the environment (internal LB IP) |
 
 ## Notes
 
-- `infrastructure_subnet_id` は **`Microsoft.App/environments` へ委任**されたサブネットであること。
-- サブネットサイズは Consumption-only で最小 `/23`、Workload Profile 環境で最小 `/27`。
+- `infrastructure_subnet_id` must be a subnet **delegated to `Microsoft.App/environments`**.
+- Minimum subnet size is `/23` for Consumption-only and `/27` for workload profile environments.

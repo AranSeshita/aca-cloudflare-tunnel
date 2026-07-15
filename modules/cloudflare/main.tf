@@ -1,15 +1,15 @@
-# Cloudflare Tunnel 本体。ACA 上の `cloudflared` コンテナが終端する。
-# config_src = "cloudflare" にすると Ingress ルーティングを Cloudflare 側（リモート）で管理する。
-# リモート管理では tunnel_secret は不要（Cloudflare 側で生成・管理される）。
+# The Cloudflare Tunnel itself, terminated by the `cloudflared` container running on ACA.
+# config_src = "cloudflare" means the ingress routing is managed remotely on the Cloudflare side.
+# With remote management, no tunnel_secret is needed (Cloudflare generates and manages it).
 resource "cloudflare_zero_trust_tunnel_cloudflared" "main" {
   account_id = var.account_id
   name       = "${var.project_name}-${var.environment}-tunnel"
   config_src = "cloudflare"
 }
 
-# Ingress ルーティング: 公開ホスト名 → cloudflared から到達可能な内部サービス URL
-#（例: Frontend ACA の内部 FQDN）。末尾に catch-all ルールが必須。
-# 注意: provider v5 では `config` はブロックではなくネスト属性。
+# Ingress routing: public hostname → internal service URL reachable from cloudflared
+# (e.g. the internal FQDN of the frontend ACA). A catch-all rule is required and must be last.
+# Note: in provider v5, `config` is a nested attribute, not a block.
 resource "cloudflare_zero_trust_tunnel_cloudflared_config" "main" {
   account_id = var.account_id
   tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.main.id
@@ -21,9 +21,9 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "main" {
         hostname = r.hostname
         service  = r.service
         path     = r.path
-        # https origin（例: 内部 CAE の ACA FQDN）では host ヘッダーと SNI を origin の
-        # FQDN に合わせる必要がある（合わないと TLS/SNI 検証に失敗する）。呼び出し側が
-        # origin_request を渡さない場合は service の host から自動導出する。
+        # For an https origin (e.g. an ACA FQDN inside the internal CAE), the Host header
+        # and SNI must match the origin FQDN (otherwise TLS/SNI validation fails). When the
+        # caller does not pass origin_request, auto-derive both from the service host.
         origin_request = r.origin_request != null ? r.origin_request : (
           startswith(r.service, "https://") ? {
             http_host_header   = replace(replace(r.service, "https://", ""), "/", "")
@@ -36,18 +36,19 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "main" {
   }
 }
 
-# コネクタトークン。cloudflared の起動に必要。v5 では data source で取得する
-#（resource 側は `tunnel_token` を出力しなくなった）。
+# Connector token, required to start cloudflared. In v5 it is fetched via a data source
+# (the resource no longer exports `tunnel_token`).
 data "cloudflare_zero_trust_tunnel_cloudflared_token" "main" {
   account_id = var.account_id
   tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.main.id
 }
 
-# Tunnel 宛の DNS CNAME を Terraform で作成する。proxied（橙雲）にして CDN/WAF を効かせる。
-# create_dns = false のルールは除外（既存ゾーンがダッシュボード手動管理で、同名 CNAME が
-# 衝突する場合の逃げ道。v5 は allow_overwrite 廃止のため衝突すると apply が失敗する）。
-# 注意: v5 で `cloudflare_record` → `cloudflare_dns_record` に改称。
-# `value` は `content` に置き換わり、`ttl` は必須（1 = 自動）。
+# DNS CNAMEs pointing at the Tunnel, created by Terraform. Proxied (orange cloud) so that
+# CDN/WAF take effect. Rules with create_dns = false are excluded (an escape hatch when the
+# existing zone is managed manually in the dashboard and a same-name CNAME would conflict;
+# v5 removed allow_overwrite, so a conflict makes the apply fail).
+# Note: v5 renamed `cloudflare_record` to `cloudflare_dns_record`.
+# `value` was replaced by `content`, and `ttl` is required (1 = automatic).
 resource "cloudflare_dns_record" "main" {
   for_each = { for r in var.ingress_rules : r.hostname => r if r.create_dns }
 
@@ -59,8 +60,8 @@ resource "cloudflare_dns_record" "main" {
   ttl     = 1
 }
 
-# 注意: WAF（マネージドルールセット / カスタムルール / レート制限）は意図的にここで
-# 管理しない。インシデント時に Terraform の PR サイクルを介さず即時チューニングできるよう
-# Cloudflare ダッシュボードで運用する。マネージドルールセットのリソースは provider の
-# メジャーバージョン間で壊れやすい事情もある。本モジュールは Tunnel とルーティング、
-#（任意で）DNS のみを担う。
+# Note: the WAF (managed rulesets / custom rules / rate limiting) is deliberately NOT
+# managed here. It is operated from the Cloudflare dashboard so it can be tuned instantly
+# during incidents without going through a Terraform PR cycle. Managed ruleset resources
+# also tend to break across provider major versions. This module only covers the Tunnel,
+# its routing, and (optionally) DNS.

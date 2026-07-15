@@ -1,5 +1,5 @@
 # ==========================================================================
-# 出力（ルート）
+# Outputs (root)
 # ==========================================================================
 output "resource_group_name" {
   description = "Resource group name."
@@ -42,7 +42,7 @@ output "tunnel_cname" {
 }
 
 output "dns_records" {
-  description = "Terraform が作成した proxied CNAME（ホスト名 => レコード ID）。"
+  description = "Proxied CNAME records created by Terraform (hostname => record ID)."
   value       = module.cloudflare.dns_records
 }
 

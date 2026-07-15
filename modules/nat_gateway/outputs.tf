@@ -9,6 +9,6 @@ output "public_ip_id" {
 }
 
 output "public_ip_address" {
-  description = "The fixed egress IP. Use this for downstream IP allow-lists (e.g., Service Bus Premium, external APIs)"
+  description = "The fixed egress IP. Use this for downstream IP allow-lists (e.g., external APIs)"
   value       = azurerm_public_ip.nat.ip_address
 }

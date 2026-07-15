@@ -1,9 +1,10 @@
 # user_assigned_identity
 
-User Assigned Managed Identity (UAMI) と、その ID へのロール割り当てを作成するモジュール。
-ACA アプリが**シークレットレス**で ACR などにアクセスするための ID として使う。
+Creates a User Assigned Managed Identity (UAMI) and role assignments for it.
+Used as the identity that lets ACA apps access ACR and other resources **without secrets**.
 
-このサンプルでは Frontend / Backend 用に 2 つ作り（`suffix` で区別）、それぞれに `AcrPull` を付与する。
+This sample creates two of them, one for the frontend and one for the backend
+(distinguished by `suffix`), each granted `AcrPull`.
 
 ## Usage
 
@@ -24,7 +25,7 @@ module "id_frontend" {
 }
 ```
 
-`container_app` へ渡す:
+Pass to `container_app`:
 
 ```hcl
 identity_type        = "UserAssigned"
@@ -34,26 +35,27 @@ registry_identity_id = module.id_frontend.id
 
 ## Inputs
 
-| Name | Type | Default | 説明 |
-|------|------|---------|------|
-| `resource_group_name` | string | - | リソースグループ名 |
-| `location` | string | - | Azure リージョン |
-| `project_name` / `environment` | string | - | 命名プレフィックス / 環境 |
-| `suffix` | string | `""` | ID 名のサフィックス（複数 ID の区別用） |
-| `role_assignments` | map(object) | `{}` | `{ scope, role_definition_name }` のマップ |
-| `tags` | map(string) | `{}` | タグ |
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `resource_group_name` | string | - | Resource group name |
+| `location` | string | - | Azure region |
+| `project_name` / `environment` | string | - | Naming prefix / environment |
+| `suffix` | string | `""` | Suffix for the identity name (to distinguish multiple identities) |
+| `role_assignments` | map(object) | `{}` | Map of `{ scope, role_definition_name }` |
+| `tags` | map(string) | `{}` | Tags |
 
 ## Outputs
 
-| Name | 説明 |
-|------|------|
-| `id` | UAMI の ID（`container_app` の `identity_ids` に渡す） |
-| `principal_id` | ロール割り当て用の Principal ID |
-| `client_id` | アプリの AAD トークン取得用（`AZURE_CLIENT_ID`） |
-| `name` | UAMI 名 |
+| Name | Description |
+|------|-------------|
+| `id` | UAMI ID (pass to `container_app`'s `identity_ids`) |
+| `principal_id` | Principal ID for role assignments |
+| `client_id` | For AAD token acquisition by the app (`AZURE_CLIENT_ID`) |
+| `name` | UAMI name |
 
 ## Notes
 
-- ロール割り当てには実行プリンシパルに `Microsoft.Authorization/roleAssignments/write`
-  （Owner または User Access Administrator）が必要。
-- ACR Pull は System Assigned より UAMI 推奨（初回デプロイ時の権限付与タイミング問題を回避）。
+- Creating role assignments requires the executing principal to have
+  `Microsoft.Authorization/roleAssignments/write` (Owner or User Access Administrator).
+- For ACR pull, a UAMI is preferred over System Assigned (avoids the permission-grant
+  timing issue on first deployment).

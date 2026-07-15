@@ -1,5 +1,5 @@
 # Container Apps Environment (CAE)
-# VNet 注入 + internal 専用（Public IP なし）にして、ワークロードを完全に閉域化する。
+# VNet injection + internal-only (no public IP) keeps the workloads fully private.
 resource "azurerm_container_app_environment" "main" {
   name                       = "cae-${var.project_name}-${var.environment}"
   location                   = var.location
@@ -7,12 +7,12 @@ resource "azurerm_container_app_environment" "main" {
   log_analytics_workspace_id = var.log_analytics_workspace_id
   tags                       = var.tags
 
-  # 委任済みの ACA サブネットへ注入する。internal_load_balancer_enabled = true にすると
-  # Ingress は VNet 内からのみ到達可能になる（Internal Ingress Only）。
+  # Inject into the delegated ACA subnet. With internal_load_balancer_enabled = true,
+  # ingress is reachable only from within the VNet (Internal Ingress Only).
   infrastructure_subnet_id       = var.infrastructure_subnet_id
   internal_load_balancer_enabled = var.internal_load_balancer_enabled
 
-  # 任意の Workload Profile。空の場合は Consumption-only 環境を作成する。
+  # Optional workload profiles. An empty list creates a Consumption-only environment.
   dynamic "workload_profile" {
     for_each = var.workload_profiles
     content {
@@ -23,8 +23,8 @@ resource "azurerm_container_app_environment" "main" {
     }
   }
 
-  # Consumption-only 環境では Azure が "Consumption" プロファイルを自動追加する。差分を
-  # 無視して、Terraform が apply のたびに削除しようとしないようにする。
+  # In a Consumption-only environment, Azure auto-adds a "Consumption" profile. Ignore
+  # the diff so Terraform does not try to remove it on every apply.
   lifecycle {
     ignore_changes = [workload_profile]
   }

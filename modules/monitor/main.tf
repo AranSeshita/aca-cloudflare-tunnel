@@ -1,4 +1,4 @@
-# Log Analytics Workspace（CAE のログ出力先）
+# Log Analytics Workspace (log destination for the CAE)
 resource "azurerm_log_analytics_workspace" "main" {
   name                = "law-${var.project_name}-${var.environment}"
   location            = var.location

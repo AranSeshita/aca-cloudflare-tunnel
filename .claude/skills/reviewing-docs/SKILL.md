@@ -1,59 +1,59 @@
 ---
 name: reviewing-docs
-description: このリポジトリの README（ルート / 各モジュール）と .tf コメントを、正確さ・一貫性・簡潔さの観点でレビューする。README を書いた/更新した、.tf コメントを整えた、公開前に最終確認したいときに使う。README の Inputs/Outputs 表と variables.tf/outputs.tf の突き合わせ、他プロジェクト由来の記述（service_bus / openai / key_vault / renderer 等）や旧参照の検出を含む。
+description: Review this repository's READMEs (root / per-module) and .tf comments for accuracy, consistency, and conciseness. Use after writing/updating a README, after tidying .tf comments, or as a final check before publishing. Includes cross-checking README Inputs/Outputs tables against variables.tf/outputs.tf, and detecting leftovers from other projects (service_bus / openai / key_vault / renderer, etc.) or stale references.
 ---
 
-# ドキュメントレビュー
+# Documentation review
 
-対象: ルート `README.md`、各 `modules/*/README.md`、`.tf` 内コメント。
-指摘は「ファイル・行・問題・修正案」を具体的に出す。修正を頼まれたら適用する。
+Scope: root `README.md`, every `modules/*/README.md`, and comments inside `.tf` files.
+Report findings concretely as "file, line, problem, suggested fix". Apply fixes when asked.
 
-## 進め方
+## Process
 
-このチェックリストを回答にコピーして進捗を管理する:
+Copy this checklist into your reply and track progress against it:
 
 ```
-- [ ] 1. 対象ファイルを読む（README と対応する .tf）
-- [ ] 2. Inputs/Outputs 表を variables.tf / outputs.tf と突き合わせる
-- [ ] 3. 観点ごとに指摘を洗い出す
-- [ ] 4. 重要度順に提示（依頼があれば修正を適用）
-- [ ] 5. コメントのみの変更なら fmt / validate に影響しないことを確認
+- [ ] 1. Read the target files (README plus the corresponding .tf)
+- [ ] 2. Cross-check the Inputs/Outputs tables against variables.tf / outputs.tf
+- [ ] 3. Collect findings per review criterion
+- [ ] 4. Present them in order of severity (apply fixes if requested)
+- [ ] 5. For comment-only changes, confirm fmt / validate are unaffected
 ```
 
-突き合わせに使うコマンド:
+Commands for the cross-check:
 
 ```bash
-grep -nE "variable|output" modules/<m>/*.tf                 # 実在する変数 / 出力名
-grep -rniE "service_bus|openai|key_vault|renderer|civil\.example|container_registroy" --include="*.md" .  # 他PJ由来 / 旧参照
+grep -nE "variable|output" modules/<m>/*.tf                 # variable / output names that actually exist
+grep -rniE "service_bus|openai|key_vault|renderer|civil\.example|container_registroy" --include="*.md" .  # leftovers from other projects / stale references
 ```
 
-## 観点
+## Review criteria
 
-### 正確さ（最優先）
+### Accuracy (highest priority)
 
-- README の Inputs / Outputs 表が `variables.tf` / `outputs.tf` と一致（名前・型・デフォルト・過不足）。
-- コード例（HCL）が実在の変数名・モジュール出力・source パスを指す（廃止した変数や旧ディレクトリ名を参照しない）。
-- 手順（`init` / `plan` / `apply`、tfvars に埋める値）が実態と一致。
+- README Inputs / Outputs tables match `variables.tf` / `outputs.tf` (names, types, defaults, no extras or omissions).
+- Code examples (HCL) reference real variable names, module outputs, and source paths (no removed variables or old directory names).
+- Procedures (`init` / `plan` / `apply`, values to fill into tfvars) match reality.
 
-### 一貫性
+### Consistency
 
-- 言語: コメント・本文は日本語で統一（製品名 / 技術用語の英語は可）。
-- 構成: 各モジュール README が `Usage` / `Inputs` / `Outputs` / `Notes` で統一。
-- 用語: 同一概念に別表記が混ざらない。
-- 他プロジェクト由来の記述が残っていない。
+- Language: comments and prose are unified in English.
+- Structure: every module README follows `Usage` / `Inputs` / `Outputs` / `Notes`.
+- Terminology: no mixed spellings for the same concept.
+- No leftovers from other projects.
 
-### 簡潔さ
+### Conciseness
 
-- 冗長・重複を削る（1 項目 1 メッセージ）。
-- 箇条書きの文体を揃える（名詞句 or 文で統一）。
-- 見出し階層・表・コードブロックが崩れていない。
+- Cut redundancy and duplication (one message per item).
+- Keep bullet style consistent (noun phrases or full sentences, not a mix).
+- Heading hierarchy, tables, and code blocks are intact.
 
-## 出力フォーマット
+## Output format
 
 ```
-## <ファイル>
-- [正確さ] L<行>: <問題> → <修正案>
-- [一貫性] L<行>: ...
+## <file>
+- [Accuracy] L<line>: <problem> → <suggested fix>
+- [Consistency] L<line>: ...
 ```
 
-指摘ゼロなら「問題なし」と明記する。
+If there are no findings, state "No issues found" explicitly.

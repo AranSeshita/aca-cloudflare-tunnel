@@ -11,9 +11,9 @@ terraform {
     }
   }
 
-  # state はデフォルトでローカル（このディレクトリの terraform.tfstate）。
-  # 本番ではリモートバックエンドを使うこと（README の「State management」を参照）。
-  # 例（Azure Blob）:
+  # State is local by default (terraform.tfstate in this directory).
+  # Use a remote backend for production (see "State management" in the README).
+  # Example (Azure Blob):
   #
   # backend "azurerm" {
   #   resource_group_name  = "rg-acatunnel-dev-state"

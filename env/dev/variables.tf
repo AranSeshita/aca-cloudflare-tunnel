@@ -1,5 +1,5 @@
 # ==========================================================================
-# 入力変数（ルート）
+# Input variables (root)
 # ==========================================================================
 
 # --- Azure ----------------------------------------------------------------
@@ -62,13 +62,13 @@ variable "subnets" {
 }
 
 variable "frontend_image" {
-  description = "Frontend のイメージ。既定は Network Tester（Tunnel 経由で開き、backend の内部 FQDN へ疎通確認する UI。8080 待受）。"
+  description = "Frontend image. Default is Network Tester (a UI opened through the Tunnel to probe the backend's internal FQDN; listens on 8080)."
   type        = string
   default     = "docker.io/joechen0713/containerapp_networktester:1.0"
 }
 
 variable "backend_image" {
-  description = "Backend のイメージ。既定は containerapps-helloworld（疎通先の応答役。80 待受・PORT を読まない）。"
+  description = "Backend image. Default is containerapps-helloworld (connectivity-check responder; listens on 80 and ignores PORT)."
   type        = string
   default     = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
 }

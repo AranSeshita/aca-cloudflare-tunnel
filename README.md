@@ -1,130 +1,123 @@
 # aca-cloudflare-tunnel
 
-Azure Container Apps (ACA) を **Cloudflare Tunnel** 経由で公開するサンプル構成（Terraform）。
+Sample Terraform configuration that exposes Azure Container Apps (ACA) through a **Cloudflare Tunnel**.
 
-> 📝 解説記事: [Cloudflare Tunnel で 閉域内の Azure Container Apps を安全かつ低予算で公開する](https://zenn.dev/aranseshita/articles/c6062effc4e8a0)
+> 📝 Companion article (Japanese): [Cloudflare Tunnel で 閉域内の Azure Container Apps を安全かつ低予算で公開する](https://zenn.dev/aranseshita/articles/c6062effc4e8a0)
 
-Azure Front Door Premium（WAF 用に月 $330）を使わず、CDN / WAF を Cloudflare 側で完結させる。
-ACA は Internal（VNet 統合）で構築し、外部からの到達経路は Tunnel のアウトバウンド接続だけ。
-**Azure 側の Inbound 開放はゼロ**。
+Instead of Azure Front Door Premium ($330/month just for WAF), CDN / WAF are handled entirely on the Cloudflare side.
+ACA runs as an Internal (VNet-integrated) environment, and the only inbound path is the Tunnel's outbound-only connections.
+**Zero inbound ports open on Azure.**
 
-## 特徴
+## Highlights
 
-- WAF を安く — AFD Premium（$330/月）でしか使えなかった WAF を Cloudflare（Free / Pro $20）で
-- Inbound ゼロ — Origin は Tunnel のアウトバウンド接続のみ。Public IP / Public FQDN なし
-- 証明書レス — ACA へのカスタムドメイン登録・証明書管理が不要（Host ヘッダー書き換えで解決）
-- 全部 Terraform — Portal 操作なしで再現可能
+- Affordable WAF — get WAF on Cloudflare (Free / Pro $20) instead of AFD Premium ($330/month)
+- Zero inbound — the origin is reachable only via outbound-only Tunnel connections. No public IP / public FQDN
+- Certificate-free — no custom domain registration or certificate management on ACA (solved by Host header rewrite)
+- 100% Terraform — fully reproducible, no Portal clicking
 
-## アーキテクチャ
+## Architecture
 
-```
-Browser
-  → Cloudflare (CDN / WAF)
-    → Tunnel
-      → cloudflared (ACA)
-        → Frontend (ACA 内部 Ingress)
-          → Backend
-```
+![Architecture diagram: a user's HTTPS request passes through Cloudflare Edge (DDoS mitigation, custom rules, rate limiting, bot protection, WAF managed rules), then through Cloudflare Tunnel into an internal ACA Environment, where cloudflared forwards it to the frontend Container App, which calls the backend internally](assets/architecture.png)
 
-- ACA Environment は Internal（Public IP / Public FQDN なし）
-- `cloudflared` を ACA 上のコンテナとして常駐させ、Cloudflare Edge へアウトバウンド接続
-- アウトバウンドは NAT Gateway で単一固定 IP に集約
-- WAF / Geo / Rate Limit は Cloudflare ダッシュボードで運用（Terraform 管理外）
+- The ACA Environment is Internal (no public IP / public FQDN)
+- `cloudflared` runs as a container on ACA and maintains outbound connections to the Cloudflare edge
+- Outbound traffic is consolidated to a single static IP via NAT Gateway
+- WAF / Geo / Rate Limiting are managed in the Cloudflare dashboard (outside Terraform)
 
-## 構成
+## Layout
 
 ```
-env/dev/        # ルート（このディレクトリで terraform を実行）
-modules/        # 再利用モジュール
+env/dev/        # Root module (run terraform from this directory)
+modules/        # Reusable modules
 ├─ resource_group/
-├─ network/                    # VNet + サブネット（ACA サブネットを Microsoft.App/environments へ委任）
+├─ network/                    # VNet + subnets (ACA subnet delegated to Microsoft.App/environments)
 ├─ monitor/                    # Log Analytics + Application Insights
-├─ container_registry/         # ACR（public + Managed Identity / AcrPull）
-├─ nat_gateway/                # 固定 egress IP
-├─ user_assigned_identity/     # ACA 用 UAMI + ロール付与
-├─ container_app_environment/  # 内部 CAE
-├─ container_app/              # 再利用コンテナアプリ（web / api / cloudflared）
-└─ cloudflare/                 # Tunnel + ルーティング + DNS
+├─ container_registry/         # ACR (public + Managed Identity / AcrPull)
+├─ nat_gateway/                # Static egress IP
+├─ user_assigned_identity/     # UAMI for ACA + role assignments
+├─ container_app_environment/  # Internal CAE
+├─ container_app/              # Reusable container app (web / api / cloudflared)
+└─ cloudflare/                 # Tunnel + routing + DNS
 ```
 
-## 前提
+## Prerequisites
 
-以下を用意しておく:
+You will need:
 
-- Cloudflare で管理している独自ドメイン
-- Azure サブスクリプション（MI に AcrPull を付与するため **Owner** または **Contributor + User Access Administrator**）
-- Cloudflare API Token（Account: `Cloudflare Tunnel:Edit`、Zone: `DNS:Edit` / `Zone:Read`）
-- Azure CLI（`az`）/ Terraform 1.5+
+- A custom domain managed on Cloudflare
+- An Azure subscription (**Owner**, or **Contributor + User Access Administrator**, to grant AcrPull to the managed identities)
+- A Cloudflare API Token (Account: `Cloudflare Tunnel:Edit`, Zone: `DNS:Edit` / `Zone:Read`)
+- Azure CLI (`az`) / Terraform 1.5+
 
-## 使い方
+## Usage
 
 ```bash
-az login                                        # Azure 認証
-az account set --subscription <subscription_id> # 対象サブスクリプションを選択
+az login                                        # Authenticate with Azure
+az account set --subscription <subscription_id> # Select the target subscription
 
 cd env/dev
-cp terraform.tfvars.example terraform.tfvars   # 値を埋める（gitignore 済み）
+cp terraform.tfvars.example terraform.tfvars   # Fill in the values (gitignored)
 terraform init
 terraform plan
 terraform apply
 ```
 
-Cloudflare は API Token（`terraform.tfvars` の `cloudflare_api_token`）で認証するため、別途ログインは不要。
+Cloudflare is authenticated via API Token (`cloudflare_api_token` in `terraform.tfvars`), so no separate login is required.
 
-### `terraform.tfvars` に埋める値
+### Values to fill in `terraform.tfvars`
 
-| 変数                    | 例                | 説明                                                       |
-| ----------------------- | ----------------- | ---------------------------------------------------------- |
-| `subscription_id`       | `00000000-...`    | Azure サブスクリプション ID                                |
-| `public_hostname`       | `app.example.com` | 公開ホスト名（`cloudflare_zone_id` のゾーン配下）          |
-| `cloudflare_api_token`  | `cf-...`          | Cloudflare API Token（Tunnel:Edit / DNS:Edit / Zone:Read） |
-| `cloudflare_account_id` | `...`             | Cloudflare アカウント ID                                   |
-| `cloudflare_zone_id`    | `...`             | 対象ドメインの Zone ID                                     |
+| Variable                | Example           | Description                                                     |
+| ----------------------- | ----------------- | --------------------------------------------------------------- |
+| `subscription_id`       | `00000000-...`    | Azure subscription ID                                           |
+| `public_hostname`       | `app.example.com` | Public hostname (must live in the `cloudflare_zone_id` zone)    |
+| `cloudflare_api_token`  | `cf-...`          | Cloudflare API Token (Tunnel:Edit / DNS:Edit / Zone:Read)       |
+| `cloudflare_account_id` | `...`             | Cloudflare account ID                                           |
+| `cloudflare_zone_id`    | `...`             | Zone ID of the target domain                                    |
 
-`project_name`（既定 `acatunnel`）/ `location`（既定 `japaneast`）は必要なら上書きする。
+Override `project_name` (default `acatunnel`) / `location` (default `japaneast`) if needed.
 
-`apply` で、`public_hostname` の proxied CNAME（→ Tunnel）も Terraform が作成する。
-反映後、`public_hostname` が Cloudflare 経由で Frontend まで到達する。
+On `apply`, Terraform also creates the proxied CNAME for `public_hostname` (pointing at the Tunnel).
+Once it propagates, `public_hostname` reaches the Frontend through Cloudflare.
 
-既存ゾーンをダッシュボードで手動管理していて同名 CNAME が衝突する場合は、cloudflare モジュールの
-`ingress_rules[].create_dns = false` で Terraform 管理から外す。
+If you manage the zone manually in the dashboard and a CNAME with the same name would conflict,
+set `ingress_rules[].create_dns = false` in the cloudflare module to keep it out of Terraform.
 
-### Deploy 後の確認（疎通確認）
+### Post-deploy verification (connectivity check)
 
-デプロイされるアプリ:
+Deployed apps:
 
-|          | イメージ                                                      | ポート | 役割                                                           |
-| -------- | ------------------------------------------------------------- | ------ | -------------------------------------------------------------- |
-| Frontend | `joechen0713/containerapp_networktester:1.0`                  | 8080   | Tunnel 公開。診断 UI から backend の内部 FQDN を叩いて疎通確認 |
-| Backend  | `mcr.microsoft.com/azuredocs/containerapps-helloworld:latest` | 80     | 閉域内の応答役                                                 |
+|          | Image                                                          | Port | Role                                                                          |
+| -------- | -------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------- |
+| Frontend | `joechen0713/containerapp_networktester:1.0`                   | 8080 | Exposed via the Tunnel. Diagnostic UI to probe the backend's internal FQDN     |
+| Backend  | `mcr.microsoft.com/azuredocs/containerapps-helloworld:latest`  | 80   | Simple responder inside the private network                                   |
 
-- Frontend は **Network Tester**（`joechen0713/containerapp_networktester`）。`public_hostname` を開くと
-  診断 UI が出る＝ **Browser → Cloudflare → Tunnel → cloudflared → Frontend** の経路が通っている証拠。
-- UI から **Backend の内部 FQDN**（`terraform output backend_fqdn`、Frontend には `BACKEND_URL` として注入済み）を
-  叩くと、閉域内の **ACA → ACA** 疎通を確認できる。Backend は helloworld（80番）の単純な応答役。
-- 実アプリに置き換えるときは `frontend_image` / `backend_image` を差し替え、Backend の
-  `target_port` を実待受ポートに合わせる。
+- The Frontend is **Network Tester** (`joechen0713/containerapp_networktester`). If the diagnostic UI
+  loads when you open `public_hostname`, the **Browser → Cloudflare → Tunnel → cloudflared → Frontend** path is working.
+- From the UI, hit the **Backend's internal FQDN** (`terraform output backend_fqdn`, already injected into the
+  Frontend as `BACKEND_URL`) to verify **ACA → ACA** connectivity inside the private network.
+  The Backend is a plain helloworld responder (port 80).
+- To swap in your real apps, replace `frontend_image` / `backend_image` and set the Backend's
+  `target_port` to the actual listening port.
 
 ## State management
 
-デフォルトは **ローカル state**（`env/dev/terraform.tfstate`）。手元検証はこれで十分。
+The default is **local state** (`env/dev/terraform.tfstate`), which is fine for local experimentation.
 
-**本番利用では必ずリモート state を使うこと。** state には接続情報や生成値が含まれ、ローカル
-運用ではチーム共有・排他ロック・履歴が担保できない。推奨バックエンド:
+**Always use remote state for production.** State contains connection info and generated values,
+and local state cannot provide team sharing, locking, or history. Recommended backends:
 
-- Azure Blob Storage（`backend "azurerm"`） — Storage Account + Blob コンテナを別途作成し、
-  [env/dev/provider.tf](env/dev/provider.tf) のコメントアウト済み `backend "azurerm"` ブロックを
-  有効化する。ロックは Blob Lease で自動。
-- Terraform Cloud / HCP Terraform（`cloud {}` ブロック） — リモート実行・state 管理・ロックを
-  マネージドで提供。
+- Azure Blob Storage (`backend "azurerm"`) — create a Storage Account + Blob container, then enable
+  the commented-out `backend "azurerm"` block in [env/dev/provider.tf](env/dev/provider.tf).
+  Locking is handled automatically via Blob Lease.
+- Terraform Cloud / HCP Terraform (`cloud {}` block) — managed remote execution, state, and locking.
 
-いずれも保管先は暗号化 + アクセス制限すること。
+Either way, keep the state store encrypted and access-restricted.
 
-## コスト感
+## Cost comparison
 
-|        | AFD Premium | 本構成                                               |
-| ------ | ----------- | ---------------------------------------------------- |
-| WAF    | 含む        | Cloudflare（Free / Pro $20）                         |
-| 固定費 | $330/月     | Cloudflare プラン + cloudflared 実行コスト（数ドル） |
+|            | AFD Premium | This setup                                             |
+| ---------- | ----------- | ------------------------------------------------------ |
+| WAF        | Included    | Cloudflare (Free / Pro $20)                            |
+| Fixed cost | $330/month  | Cloudflare plan + cloudflared runtime cost (a few $)   |
 
-OWASP Core Ruleset / Rate Limiting / 本格的な Bot 対策を使うなら Cloudflare Pro 以上。
+For OWASP Core Ruleset, Rate Limiting, or serious bot protection, use Cloudflare Pro or above.

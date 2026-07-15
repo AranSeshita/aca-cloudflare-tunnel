@@ -1,20 +1,20 @@
 # cloudflare
 
-Cloudflare Tunnel + ルーティング + DNS を構成するモジュール。外部公開を
-**Cloudflare 経由のアウトバウンド接続（Tunnel）**で行い、Azure 側にインバウンドを開けない。
-CDN / WAF は Cloudflare 側で効かせる（WAF はダッシュボード運用。後述）。
+Module that provisions the Cloudflare Tunnel, its routing, and DNS. Public exposure happens
+through **outbound-only Tunnel connections via Cloudflare**, with zero inbound ports open on Azure.
+CDN / WAF are enforced on the Cloudflare side (the WAF is dashboard-managed; see below).
 
-データフロー:
+Data flow:
 
 ```
-Browser → Cloudflare (CDN / WAF) → Tunnel → cloudflared (ACA) → Frontend (ACA 内部 Ingress)
+Browser → Cloudflare (CDN / WAF) → Tunnel → cloudflared (ACA) → Frontend (ACA internal ingress)
 ```
 
-構成するリソース:
+Resources managed:
 
-1. `cloudflare_zero_trust_tunnel_cloudflared` — Tunnel 本体（`config_src = "cloudflare"`）
-2. `cloudflare_zero_trust_tunnel_cloudflared_config` — Ingress ルーティング（公開ホスト名 → 内部サービス URL）
-3. `cloudflare_dns_record` — Tunnel への proxied CNAME を **Terraform で作成**（`create_dns = false` で除外可）
+1. `cloudflare_zero_trust_tunnel_cloudflared` — the Tunnel itself (`config_src = "cloudflare"`)
+2. `cloudflare_zero_trust_tunnel_cloudflared_config` — ingress routing (public hostname → internal service URL)
+3. `cloudflare_dns_record` — proxied CNAME to the Tunnel, **created by Terraform** (opt out with `create_dns = false`)
 
 ## Usage
 
@@ -30,13 +30,13 @@ module "cloudflare" {
   ingress_rules = [
     {
       hostname = "app.example.com"
-      # Frontend ACA の内部 Ingress FQDN（module output の fqdn を使う）
+      # Internal ingress FQDN of the frontend ACA (use the module's fqdn output)
       service = "https://${module.aca_frontend.fqdn}"
     }
   ]
 }
 
-# cloudflared コンテナへトークンを注入
+# Inject the token into the cloudflared container
 module "aca_cloudflared" {
   source = "../../modules/container_app"
   # ...
@@ -46,7 +46,7 @@ module "aca_cloudflared" {
 }
 ```
 
-利用する環境（`env/<env>`）で `provider "cloudflare"` の設定が必須:
+The consuming environment (`env/<env>`) must configure the `provider "cloudflare"` block:
 
 ```hcl
 provider "cloudflare" {
@@ -56,51 +56,53 @@ provider "cloudflare" {
 
 ## Inputs
 
-| Name | Type | Default | 説明 |
+| Name | Type | Default | Description |
 |------|------|---------|------|
-| `account_id` | string | - | Cloudflare アカウント ID |
-| `zone_id` | string | - | DNS / WAF 対象ゾーン ID |
-| `project_name` / `environment` | string | - | 命名用 |
-| `ingress_rules` | list(object) | `[]` | ルーティング（下記スキーマ） |
-| `catch_all_service` | string | `http_status:404` | 未マッチ時のフォールバック |
+| `account_id` | string | - | Cloudflare account ID |
+| `zone_id` | string | - | Zone ID for DNS / WAF |
+| `project_name` / `environment` | string | - | Used for naming |
+| `ingress_rules` | list(object) | `[]` | Routing rules (schema below) |
+| `catch_all_service` | string | `http_status:404` | Fallback for unmatched requests |
 
-### `ingress_rules` スキーマ
+### `ingress_rules` schema
 
-| フィールド | 型 | 既定 | 説明 |
+| Field | Type | Default | Description |
 |-----------|----|------|------|
-| `hostname` | string | - | 公開ホスト名 |
-| `service` | string | - | cloudflared から到達可能な origin URL |
-| `path` | string | `null` | 任意: パスマッチ |
-| `create_dns` | bool | `true` | proxied CNAME を Terraform で作成するか |
-| `origin_request` | any | `null` | 任意: 未指定なら https origin の host から自動導出 |
+| `hostname` | string | - | Public hostname |
+| `service` | string | - | Origin URL reachable from cloudflared |
+| `path` | string | `null` | Optional: path match |
+| `create_dns` | bool | `true` | Whether Terraform creates the proxied CNAME |
+| `origin_request` | any | `null` | Optional: auto-derived from the https origin host when omitted |
 
 ## Outputs
 
-| Name | 説明 |
+| Name | Description |
 |------|------|
 | `tunnel_id` | Tunnel ID |
-| `tunnel_token` | コネクタトークン（**sensitive**、cloudflared に注入） |
+| `tunnel_token` | Connector token (**sensitive**, injected into cloudflared) |
 | `tunnel_cname` | `<tunnel-id>.cfargotunnel.com` |
-| `dns_records` | Terraform が作成した proxied CNAME（ホスト名 => レコード ID） |
+| `dns_records` | Proxied CNAMEs created by Terraform (hostname => record ID) |
 
 ## Notes
 
-### service / FQDN の注意
+### service / FQDN caveats
 
-- `ingress_rules[].service` は **cloudflared から到達可能な URL**（= Frontend ACA の内部 Ingress FQDN）。
-  同一 CAE 内なら内部 FQDN で解決できる。
-- https origin の場合、host ヘッダー / SNI を origin FQDN に合わせる必要がある。本モジュールは
-  `origin_request` 未指定時に service の host から自動導出する。
+- `ingress_rules[].service` must be a **URL reachable from cloudflared** (i.e. the internal
+  ingress FQDN of the frontend ACA). Within the same CAE, the internal FQDN resolves as-is.
+- For an https origin, the Host header and SNI must match the origin FQDN. When
+  `origin_request` is omitted, this module auto-derives both from the service host.
 
-### DNS レコード
+### DNS records
 
-- 各 `ingress_rules` の `hostname` に対し、`<tunnel-id>.cfargotunnel.com` への **proxied CNAME を
-  Terraform で作成**する（`create_dns = true` 既定）。
-- 既存ゾーンが Cloudflare ダッシュボードで手動管理されていて同名 CNAME が衝突する場合は
-  `create_dns = false` にする。v5 は `allow_overwrite` 廃止のため、衝突すると apply が失敗する。
+- For each `ingress_rules` `hostname`, a **proxied CNAME to `<tunnel-id>.cfargotunnel.com`
+  is created by Terraform** (`create_dns = true` by default).
+- If the existing zone is managed manually in the Cloudflare dashboard and a CNAME with the
+  same name would conflict, set `create_dns = false`. Provider v5 removed `allow_overwrite`,
+  so a conflict makes the apply fail.
 
-### WAF はこのモジュールで管理しない（意図的）
+### The WAF is not managed by this module (deliberately)
 
-WAF（マネージドルールセット / カスタムルール / レート制限）は Cloudflare ダッシュボードで運用する。
-インシデント時に即時チューニングでき、プロバイダのメジャーバージョン差にも巻き込まれない。
-proxied な DNS にしておけば WAF はゾーンレベルで自動適用される。
+The WAF (managed rulesets / custom rules / rate limiting) is operated from the Cloudflare
+dashboard. That allows instant tuning during incidents and keeps you out of provider
+major-version breakage. As long as the DNS records are proxied, the WAF applies automatically
+at the zone level.

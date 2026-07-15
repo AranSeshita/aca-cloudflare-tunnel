@@ -1,6 +1,6 @@
 # resource_group
 
-リソースグループを作成するモジュール。
+Creates a resource group.
 
 ## Usage
 
@@ -16,16 +16,16 @@ module "resource_group" {
 
 ## Inputs
 
-| Name | Type | Default | 説明 |
-|------|------|---------|------|
-| `name` | string | - | リソースグループ名 |
-| `location` | string | - | Azure リージョン |
-| `tags` | map(string) | `{}` | タグ |
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `name` | string | - | Resource group name |
+| `location` | string | - | Azure region |
+| `tags` | map(string) | `{}` | Tags |
 
 ## Outputs
 
-| Name | 説明 |
-|------|------|
-| `resource_group_id` | リソースグループの ID |
-| `resource_group_name` | リソースグループ名 |
-| `resource_group_location` | リージョン |
+| Name | Description |
+|------|-------------|
+| `resource_group_id` | Resource group ID |
+| `resource_group_name` | Resource group name |
+| `resource_group_location` | Region |

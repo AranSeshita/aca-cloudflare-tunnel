@@ -1,16 +1,16 @@
 # container_app
 
-再利用可能な Azure Container App モジュール。1 アプリ = 1 呼び出しで構築する。
-このサンプルでは **web / api / cloudflared** の 3 アプリをすべてこのモジュールで作る。
+Reusable Azure Container App module: one app per module call.
+In this sample, all three apps — **web / api / cloudflared** — are built with this module.
 
-- 単一コンテナ + 環境変数 / Secret（インライン値）
-- Managed Identity（System / User Assigned）による ACR Pull
-- Ingress あり（内部）/ なし（headless）の切り替え
-- KEDA カスタムスケールルール、scale-to-zero（`min_replicas = 0`）にも対応
+- Single container + environment variables / secrets (inline values)
+- ACR pull via Managed Identity (System / User Assigned)
+- Switchable between ingress-enabled (internal) and headless (no ingress)
+- Supports KEDA custom scale rules and scale-to-zero (`min_replicas = 0`)
 
 ## Usage
 
-### Frontend / Backend（内部 Ingress）
+### Frontend / Backend (internal ingress)
 
 ```hcl
 module "aca_frontend" {
@@ -37,7 +37,7 @@ module "aca_frontend" {
 }
 ```
 
-### Cloudflared（headless / Ingress なし）
+### Cloudflared (headless / no ingress)
 
 ```hcl
 module "aca_cloudflared" {
@@ -55,45 +55,47 @@ module "aca_cloudflared" {
   env_secrets   = { TUNNEL_TOKEN = "tunnel-token" }
   secrets       = { tunnel-token = { value = module.cloudflare.tunnel_token } }
 
-  ingress      = null # アウトバウンド接続のみ
-  min_replicas = 2    # SPOF 対策（コネクタ冗長化）
+  ingress      = null # outbound-only Tunnel connections
+  min_replicas = 2    # avoid a SPOF (redundant connectors)
   max_replicas = 3
   tags         = local.common_tags
 }
 ```
 
-## Inputs（抜粋）
+## Inputs (excerpt)
 
-| Name | Type | Default | 説明 |
+| Name | Type | Default | Description |
 |------|------|---------|------|
-| `name` | string | - | Container App 名 |
-| `resource_group_name` | string | - | リソースグループ名 |
-| `container_app_environment_id` | string | - | CAE の ID |
+| `name` | string | - | Container App name |
+| `resource_group_name` | string | - | Resource group name |
+| `container_app_environment_id` | string | - | ID of the CAE |
 | `revision_mode` | string | `Single` | `Single` / `Multiple` |
-| `container_name` / `image` | string | - | コンテナ名 / イメージ |
-| `cpu` / `memory` | number / string | `0.25` / `0.5Gi` | リソース割当 |
-| `command` / `args` | list(string) | `null` | エントリポイント / 引数（例: cloudflared の `tunnel run`） |
-| `env_vars` / `env_secrets` | map(string) | `{}` | 環境変数 / Secret 由来環境変数 |
-| `secrets` | map(object) | `{}` | Secret（`{ value }`、インライン値） |
-| `min_replicas` / `max_replicas` | number | `0` / `1` | レプリカ数（0 で scale-to-zero） |
-| `custom_scale_rules` | map(object) | `{}` | KEDA カスタムスケールルール |
+| `container_name` / `image` | string | - | Container name / image |
+| `cpu` / `memory` | number / string | `0.25` / `0.5Gi` | Resource allocation |
+| `command` / `args` | list(string) | `null` | Entrypoint / arguments (e.g. cloudflared's `tunnel run`) |
+| `env_vars` / `env_secrets` | map(string) | `{}` | Environment variables / secret-backed environment variables |
+| `secrets` | map(object) | `{}` | Secrets (`{ value }`, inline values) |
+| `min_replicas` / `max_replicas` | number | `0` / `1` | Replica counts (0 enables scale-to-zero) |
+| `custom_scale_rules` | map(object) | `{}` | KEDA custom scale rules |
 | `identity_type` / `identity_ids` | string / list | `SystemAssigned` / `null` | Managed Identity |
-| `registry_server` / `registry_identity_id` | string | `null` | ACR と Pull 用 ID |
-| `ingress` | object | `null` | Ingress 設定（`{ target_port, external_enabled?, transport?, allow_insecure_connections? }`、null で headless） |
-| `tags` | map(string) | `{}` | タグ |
+| `registry_server` / `registry_identity_id` | string | `null` | ACR and the identity used to pull |
+| `ingress` | object | `null` | Ingress config (`{ target_port, external_enabled?, transport?, allow_insecure_connections? }`; null for headless) |
+| `tags` | map(string) | `{}` | Tags |
 
 ## Outputs
 
-| Name | 説明 |
+| Name | Description |
 |------|------|
-| `id` / `name` | Container App の ID / 名前 |
-| `fqdn` | Ingress FQDN（内部 Ingress 時は内部 FQDN、Ingress なし時は `null`） |
-| `latest_revision_name` | 最新リビジョン名 |
-| `identity_principal_id` | System Assigned の Principal ID（無効時は `null`） |
+| `id` / `name` | Container App ID / name |
+| `fqdn` | Ingress FQDN (internal FQDN with internal ingress; `null` when there is no ingress) |
+| `latest_revision_name` | Name of the latest revision |
+| `identity_principal_id` | System Assigned principal ID (`null` when disabled) |
 
 ## Notes
 
-- `image` は `lifecycle.ignore_changes` 対象。初期は placeholder を置き、実イメージの更新は
-  CI（`az containerapp update --image`）に任せる想定（インフラ = 構成 / CI = イメージ の分離）。
-- ACR Pull は System Assigned より **User Assigned Identity** 推奨（初回デプロイ時の権限付与
-  タイミング問題を回避）。`user_assigned_identity` モジュールと併用する。
+- `image` is covered by `lifecycle.ignore_changes`. The intended flow is to seed a placeholder
+  image and let CI update the real image (`az containerapp update --image`) —
+  infrastructure = configuration / CI = images.
+- For ACR pull, a **User Assigned Identity** is preferred over System Assigned (it avoids the
+  role-assignment timing problem on first deploy). Use it together with the
+  `user_assigned_identity` module.

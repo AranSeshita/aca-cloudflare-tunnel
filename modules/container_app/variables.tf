@@ -25,7 +25,7 @@ variable "workload_profile_name" {
   default     = null
 }
 
-# --- コンテナ ---
+# --- Container ---
 variable "container_name" {
   description = "The name of the container"
   type        = string
@@ -74,14 +74,14 @@ variable "env_secrets" {
 
 variable "secrets" {
   description = <<-EOT
-    アプリの Secret。secret 名 => オブジェクトのマップ:
-      { value = "..." } # インライン値
+    App secrets. Map of secret name => object:
+      { value = "..." } # inline value
   EOT
   type        = map(object({ value = string }))
   default     = {}
 }
 
-# --- スケーリング ---
+# --- Scaling ---
 variable "min_replicas" {
   description = "Minimum number of replicas (0 enables scale-to-zero)"
   type        = number
@@ -100,7 +100,7 @@ variable "custom_scale_rules" {
       {
         custom_rule_type = "azure-servicebus"
         metadata         = { queueName = "jobs", messageCount = "5", namespace = "sb-..." }
-        authentication   = { conn = { secret_name = "sb-conn", trigger_parameter = "connection" } } # 任意
+        authentication   = { conn = { secret_name = "sb-conn", trigger_parameter = "connection" } } # optional
       }
   EOT
   type = map(object({
@@ -114,7 +114,7 @@ variable "custom_scale_rules" {
   default = {}
 }
 
-# --- ID / レジストリ ---
+# --- Identity / registry ---
 variable "identity_type" {
   description = "Managed identity type: SystemAssigned, UserAssigned, or 'SystemAssigned, UserAssigned'"
   type        = string
@@ -139,7 +139,7 @@ variable "registry_identity_id" {
   default     = null
 }
 
-# --- Ingress（受信） ---
+# --- Ingress (inbound) ---
 variable "ingress" {
   description = <<-EOT
     Ingress config, or null for headless workers (cloudflared / batch):

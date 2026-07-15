@@ -14,6 +14,6 @@ output "client_id" {
 }
 
 output "name" {
-  description = "The UAMI name — PostgreSQL の Entra プリンシパル名 / PGUSER に使う"
+  description = "The UAMI name"
   value       = azurerm_user_assigned_identity.main.name
 }

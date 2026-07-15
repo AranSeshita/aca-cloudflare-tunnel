@@ -1,6 +1,6 @@
 # monitor
 
-Log Analytics Workspace を作成するモジュール。Container Apps Environment のログ出力先として使う。
+Creates a Log Analytics Workspace. Used as the log destination for the Container Apps Environment.
 
 ## Usage
 
@@ -18,16 +18,16 @@ module "monitor" {
 
 ## Inputs
 
-| Name | Type | Default | 説明 |
-|------|------|---------|------|
-| `resource_group_name` | string | - | リソースグループ名 |
-| `location` | string | - | Azure リージョン |
-| `project_name` / `environment` | string | - | 命名プレフィックス / 環境 |
-| `tags` | map(string) | `{}` | タグ |
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `resource_group_name` | string | - | Resource group name |
+| `location` | string | - | Azure region |
+| `project_name` / `environment` | string | - | Naming prefix / environment |
+| `tags` | map(string) | `{}` | Tags |
 
 ## Outputs
 
-| Name | 説明 |
-|------|------|
-| `log_analytics_workspace_id` | Log Analytics Workspace の ID（CAE に渡す） |
-| `log_analytics_workspace_name` | Workspace 名 |
+| Name | Description |
+|------|-------------|
+| `log_analytics_workspace_id` | Log Analytics Workspace ID (passed to the CAE) |
+| `log_analytics_workspace_name` | Workspace name |

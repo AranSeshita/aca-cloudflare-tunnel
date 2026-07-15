@@ -1,4 +1,4 @@
-# 仮想ネットワーク（VNet）
+# Virtual network (VNet)
 resource "azurerm_virtual_network" "main" {
   name                = "vnet-${var.project_name}-${var.environment}"
   location            = var.location
@@ -7,8 +7,8 @@ resource "azurerm_virtual_network" "main" {
   tags                = var.tags
 }
 
-# サブネット。var.subnets で完全に駆動する。モジュール自身はサブネットを一切定義せず、
-# 追加は tfvars を編集するだけ（拡張可能・モジュール改変不要）。
+# Subnets, fully driven by var.subnets. The module defines no subnets of its own —
+# add more by editing tfvars only (extensible without touching the module).
 resource "azurerm_subnet" "this" {
   for_each = var.subnets
 
@@ -30,7 +30,7 @@ resource "azurerm_subnet" "this" {
   }
 }
 
-# サブネットごとに 1 つの NSG
+# One NSG per subnet
 resource "azurerm_network_security_group" "this" {
   for_each = var.subnets
 
@@ -40,8 +40,8 @@ resource "azurerm_network_security_group" "this" {
   tags                = var.tags
 }
 
-# サブネットごとの nsg_rules を "<subnet>.<rule>" をキーにした単一マップへ flatten する。
-# キーは tfvars のデータから静的に決まるため for_each は plan 時に安全。
+# Flattens each subnet's nsg_rules into a single map keyed by "<subnet>.<rule>".
+# The keys are statically derived from tfvars data, so for_each is safe at plan time.
 locals {
   nsg_rules = merge([
     for sname, s in var.subnets : {
