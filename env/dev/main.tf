@@ -139,7 +139,7 @@ module "aca_frontend" {
   name                         = "ca-${var.project_name}-${local.environment}-web"
   resource_group_name          = module.resource_group.resource_group_name
   container_app_environment_id = module.cae.id
-  revision_mode                = "Single" # Single-image CI flow: 100% traffic goes to the latest active revision automatically (switch to Multiple for canary; requires CD-side traffic control)
+  revision_mode                = "Single" # Single-image CI flow (see the backend note above)
 
   container_name = "web"
   # Frontend = Network Tester. Open it through the Tunnel and use the UI to probe

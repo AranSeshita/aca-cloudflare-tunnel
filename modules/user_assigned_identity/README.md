@@ -50,7 +50,7 @@ registry_identity_id = module.id_frontend.id
 |------|-------------|
 | `id` | UAMI ID (pass to `container_app`'s `identity_ids`) |
 | `principal_id` | Principal ID for role assignments |
-| `client_id` | For AAD token acquisition by the app (`AZURE_CLIENT_ID`) |
+| `client_id` | Client ID used by the app to acquire Microsoft Entra ID tokens (`AZURE_CLIENT_ID`) |
 | `name` | UAMI name |
 
 ## Notes

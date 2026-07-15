@@ -29,3 +29,8 @@ module "resource_group" {
 | `resource_group_id` | Resource group ID |
 | `resource_group_name` | Resource group name |
 | `resource_group_location` | Region |
+
+## Notes
+
+- The full name is provided by the caller (by convention `rg-<project_name>-<environment>`);
+  the module does no naming of its own.

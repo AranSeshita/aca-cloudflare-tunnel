@@ -72,7 +72,7 @@ provider "cloudflare" {
 | `service` | string | - | Origin URL reachable from cloudflared |
 | `path` | string | `null` | Optional: path match |
 | `create_dns` | bool | `true` | Whether Terraform creates the proxied CNAME |
-| `origin_request` | any | `null` | Optional: auto-derived from the https origin host when omitted |
+| `origin_request` | any | `null` | Optional: auto-derived from the https origin host when omitted (assumes `service` is `https://<host>` with no path) |
 
 ## Outputs
 
@@ -87,10 +87,12 @@ provider "cloudflare" {
 
 ### service / FQDN caveats
 
-- `ingress_rules[].service` must be a **URL reachable from cloudflared** (i.e. the internal
-  ingress FQDN of the frontend ACA). Within the same CAE, the internal FQDN resolves as-is.
+- `ingress_rules[].service` must be a **URL reachable from cloudflared** (in this sample, the
+  internal ingress FQDN of the frontend ACA). Within the same CAE, the internal FQDN resolves as-is.
 - For an https origin, the Host header and SNI must match the origin FQDN. When
-  `origin_request` is omitted, this module auto-derives both from the service host.
+  `origin_request` is omitted, this module auto-derives both from the service host
+  (this assumes `service` is `https://<host>` with no path — pass `origin_request`
+  explicitly otherwise).
 
 ### DNS records
 

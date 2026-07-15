@@ -24,6 +24,8 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "main" {
         # For an https origin (e.g. an ACA FQDN inside the internal CAE), the Host header
         # and SNI must match the origin FQDN (otherwise TLS/SNI validation fails). When the
         # caller does not pass origin_request, auto-derive both from the service host.
+        # Auto-derivation assumes service is "https://<host>" with no path — a path would
+        # end up concatenated into the Host/SNI. Pass origin_request explicitly otherwise.
         origin_request = r.origin_request != null ? r.origin_request : (
           startswith(r.service, "https://") ? {
             http_host_header   = replace(replace(r.service, "https://", ""), "/", "")

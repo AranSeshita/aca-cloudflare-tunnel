@@ -41,7 +41,7 @@ module "cae" {
 |------|------|
 | `id` | ID of the CAE |
 | `name` | CAE name |
-| `default_domain` | Default domain used to build internal FQDNs |
+| `default_domain` | Default domain of the environment. Do not hand-build internal FQDNs from it (`<app>.<default_domain>` misses the `.internal.` label on internal environments); use the `container_app` module's `fqdn` output instead |
 | `static_ip_address` | Static IP of the environment (internal LB IP) |
 
 ## Notes

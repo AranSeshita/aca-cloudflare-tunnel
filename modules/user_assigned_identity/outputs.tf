@@ -9,7 +9,7 @@ output "principal_id" {
 }
 
 output "client_id" {
-  description = "The Client ID — used by apps for AAD token acquisition (e.g., AZURE_CLIENT_ID)"
+  description = "The Client ID — used by apps to acquire Microsoft Entra ID tokens (e.g., AZURE_CLIENT_ID)"
   value       = azurerm_user_assigned_identity.main.client_id
 }
 

@@ -62,13 +62,14 @@ module "aca_cloudflared" {
 }
 ```
 
-## Inputs (excerpt)
+## Inputs
 
 | Name | Type | Default | Description |
 |------|------|---------|------|
 | `name` | string | - | Container App name |
 | `resource_group_name` | string | - | Resource group name |
 | `container_app_environment_id` | string | - | ID of the CAE |
+| `workload_profile_name` | string | `null` | Workload profile (`null` for Consumption-only) |
 | `revision_mode` | string | `Single` | `Single` / `Multiple` |
 | `container_name` / `image` | string | - | Container name / image |
 | `cpu` / `memory` | number / string | `0.25` / `0.5Gi` | Resource allocation |
@@ -94,7 +95,7 @@ module "aca_cloudflared" {
 ## Notes
 
 - `image` is covered by `lifecycle.ignore_changes`. The intended flow is to seed a placeholder
-  image and let CI update the real image (`az containerapp update --image`) —
+  image and let CI update it to the real image (`az containerapp update --image`) —
   infrastructure = configuration / CI = images.
 - For ACR pull, a **User Assigned Identity** is preferred over System Assigned (it avoids the
   role-assignment timing problem on first deploy). Use it together with the

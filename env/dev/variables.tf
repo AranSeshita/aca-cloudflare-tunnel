@@ -85,7 +85,7 @@ variable "public_hostname" {
 }
 
 variable "app_storage_env" {
-  description = "Extra environment variables merged into the backend app (e.g. storage connection settings)."
+  description = "Extra environment variables passed to the backend app (e.g. storage connection settings)."
   type        = map(string)
   default     = {}
 }

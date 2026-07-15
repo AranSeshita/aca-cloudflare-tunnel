@@ -26,7 +26,7 @@ variable "ingress_rules" {
       service        = "https://<internal ACA FQDN>" # origin reachable from cloudflared
       path           = "/api"                   # optional: path match
       create_dns     = true                     # optional (default true): create the proxied CNAME via Terraform
-      origin_request = { ... }                  # optional: auto-derived from the https origin host when omitted
+      origin_request = { ... }                  # optional: auto-derived from the https origin host when omitted (service must then be "https://<host>" with no path)
   EOT
   type = list(object({
     hostname       = string

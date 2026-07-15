@@ -31,3 +31,8 @@ module "monitor" {
 |------|-------------|
 | `log_analytics_workspace_id` | Log Analytics Workspace ID (passed to the CAE) |
 | `log_analytics_workspace_name` | Workspace name |
+
+## Notes
+
+- The workspace is fixed to `sku = "PerGB2018"` with `retention_in_days = 30`.
+  Adjust in `main.tf` if you need a different retention period.

@@ -9,7 +9,7 @@ output "name" {
 }
 
 output "default_domain" {
-  description = "The default domain of the Container Apps Environment (used to build internal app FQDNs)"
+  description = "The default domain of the Container Apps Environment (informational; prefer each app's ingress FQDN output — a hand-built <app>.<default_domain> drops the .internal. label on internal environments)"
   value       = azurerm_container_app_environment.main.default_domain
 }
 

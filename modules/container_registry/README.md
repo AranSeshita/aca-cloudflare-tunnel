@@ -36,14 +36,13 @@ registry_identity_id = module.id_frontend.id
 |------|------|---------|-------------|
 | `resource_group_name` | string | - | Resource group name |
 | `location` | string | - | Azure region |
-| `project_name` | string | - | Used for ACR naming (`acr{project_name}{environment}`, hyphens stripped) |
-| `environment` | string | - | Environment name (dev / stg / prod) |
+| `project_name` / `environment` | string | - | ACR naming (`acr{project_name}{environment}`, hyphens stripped) / environment name |
 | `sku` | string | `Standard` | `Basic` / `Standard` / `Premium` (Private Endpoint requires Premium) |
 | `private_endpoint_enabled` | bool | `false` | Whether to create a Private Endpoint (requires Premium) |
 | `app_subnet_id` | string | `null` | Subnet ID for the PE (required when PE is enabled) |
 | `private_dns_zone_id_acr` | string | `null` | ACR Private DNS Zone ID (required when PE is enabled) |
 | `log_analytics_workspace_id` | string | `null` | Workspace ID for diagnostic logs |
-| `diagnostics_enabled` | bool | `true` | Whether to create the diagnostic setting |
+| `diagnostics_enabled` | bool | `true` | Whether to create the diagnostic setting (requires `log_analytics_workspace_id`) |
 | `tags` | map(string) | `{}` | Tags |
 
 ## Outputs

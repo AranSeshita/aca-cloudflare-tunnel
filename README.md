@@ -4,7 +4,7 @@ Sample Terraform configuration that exposes Azure Container Apps (ACA) through a
 
 > 📝 Companion article (Japanese): [Cloudflare Tunnel で 閉域内の Azure Container Apps を安全かつ低予算で公開する](https://zenn.dev/aranseshita/articles/c6062effc4e8a0)
 
-Instead of Azure Front Door Premium ($330/month just for WAF), CDN / WAF are handled entirely on the Cloudflare side.
+Instead of using Azure Front Door Premium ($330/month just for WAF), CDN / WAF are handled entirely by Cloudflare.
 ACA runs as an Internal (VNet-integrated) environment, and the only inbound path is the Tunnel's outbound-only connections.
 **Zero inbound ports open on Azure.**
 
@@ -12,7 +12,7 @@ ACA runs as an Internal (VNet-integrated) environment, and the only inbound path
 
 - Affordable WAF — get WAF on Cloudflare (Free / Pro $20) instead of AFD Premium ($330/month)
 - Zero inbound — the origin is reachable only via outbound-only Tunnel connections. No public IP / public FQDN
-- Certificate-free — no custom domain registration or certificate management on ACA (solved by Host header rewrite)
+- Certificate-free — no custom domain registration or certificate management on ACA (handled by Host header rewrite)
 - 100% Terraform — fully reproducible, no Portal clicking
 
 ## Architecture
@@ -80,7 +80,8 @@ On `apply`, Terraform also creates the proxied CNAME for `public_hostname` (poin
 Once it propagates, `public_hostname` reaches the Frontend through Cloudflare.
 
 If you manage the zone manually in the dashboard and a CNAME with the same name would conflict,
-set `ingress_rules[].create_dns = false` in the cloudflare module to keep it out of Terraform.
+set `create_dns = false` on that ingress rule in the `cloudflare` module call (`env/dev/main.tf`)
+to keep it out of Terraform.
 
 ### Post-deploy verification (connectivity check)
 
@@ -118,6 +119,6 @@ Either way, keep the state store encrypted and access-restricted.
 |            | AFD Premium | This setup                                             |
 | ---------- | ----------- | ------------------------------------------------------ |
 | WAF        | Included    | Cloudflare (Free / Pro $20)                            |
-| Fixed cost | $330/month  | Cloudflare plan + cloudflared runtime cost (a few $)   |
+| Fixed cost | $330/month  | Cloudflare plan + cloudflared runtime cost (a few dollars/month) |
 
 For OWASP Core Ruleset, Rate Limiting, or serious bot protection, use Cloudflare Pro or above.
